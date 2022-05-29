@@ -1,6 +1,2 @@
 # ignore config file with passwords in it
 config.production.json
-
-# ignore binaries
-bin/
-obj/
