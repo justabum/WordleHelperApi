@@ -1,0 +1,9 @@
+{
+  "ApplicationConfiguration": {
+    "MinimumLevel": 1,
+    "AboutMessage": "This is the default configuration",
+    "UserID": "larry",
+    "Password": "moe",
+    "Server": "curly"
+  }
+}

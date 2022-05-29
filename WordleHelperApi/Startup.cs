@@ -16,9 +16,22 @@ namespace WordleHelperApi
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public Startup(IConfiguration configuration, IWebHostEnvironment env)
         {
             Configuration = configuration;
+
+            var globalbuilder = new ConfigurationBuilder()
+                  .SetBasePath(env.ContentRootPath)
+                         .AddJsonFile("globalconfig.json");
+            var globalConfiguration = globalbuilder.Build();
+
+            string stagingEnvironment = globalConfiguration["StagingEnvironment"];
+
+            var builder = new ConfigurationBuilder()
+                 .SetBasePath(env.ContentRootPath)
+               .AddJsonFile("config.json")
+               .AddJsonFile($"config.{stagingEnvironment}.json", optional: true);
+            Configuration = builder.Build();
         }
 
         public IConfiguration Configuration { get; }
@@ -44,6 +57,10 @@ namespace WordleHelperApi
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "WordleHelperApi", Version = "v1" });
             });
+
+            services.Configure<ApplicationConfiguration>(
+         Configuration.GetSection("ApplicationConfiguration"));
+           // services.AddMvc();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

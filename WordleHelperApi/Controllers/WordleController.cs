@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
@@ -15,6 +17,13 @@ namespace WordleHelperApi.Controllers
     [ApiController]
     public class WordleController : ControllerBase
     {
+
+        private IOptions<ApplicationConfiguration> _optionsApplicationConfiguration;
+        public WordleController(IOptions<ApplicationConfiguration> o)
+        {
+            _optionsApplicationConfiguration = o;
+        }
+
         // GET: api/<WordleController>
         [HttpGet]
         public IEnumerable<string> Get()
@@ -37,10 +46,10 @@ namespace WordleHelperApi.Controllers
             List<string> suggestions = new List<string>(); 
                 var builder = new MySqlConnectionStringBuilder
                 {
-                    Server = "{DBServer}",
+                    Server = $"{_optionsApplicationConfiguration.Value.Server}",
                     Database = "entries",
-                    UserID = "{UserID}",
-                    Password = "{Password}",
+                    UserID = $"{_optionsApplicationConfiguration.Value.UserID}",
+                    Password = $"{_optionsApplicationConfiguration.Value.Password}",
                     SslMode = MySqlSslMode.Required
                 };
 
