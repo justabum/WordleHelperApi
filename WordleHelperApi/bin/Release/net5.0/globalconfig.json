@@ -1,6 +1,3 @@
 {
-  "ApplicationConfiguration": {
-    "MinimumLevel": 1,
-    "AboutMessage": "This is the default configuration"
-  }
+  "StagingEnvironment": "production"
 }

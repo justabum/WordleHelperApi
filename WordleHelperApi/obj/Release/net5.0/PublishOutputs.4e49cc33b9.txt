@@ -1,6 +1,9 @@
 D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\WordleHelperApi.exe
 D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\appsettings.Development.json
 D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\appsettings.json
+D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\config.json
+D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\config.production.json
+D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\globalconfig.json
 D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\WordleHelperApi.dll
 D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\WordleHelperApi.deps.json
 D:\IBRDesignSource\IBRDesignSource\WordleHelperApi\WordleHelperApi\obj\Release\net5.0\PubTmp\Out\WordleHelperApi.runtimeconfig.json

@@ -22,6 +22,27 @@ namespace WordleHelperApi.Controllers
         public WordleController(IOptions<ApplicationConfiguration> o)
         {
             _optionsApplicationConfiguration = o;
+#if LATER
+            List<GuessLetter[]> guesses = new List<GuessLetter[]>();
+            GuessLetter[] guess = new GuessLetter[5];
+            guess[0] = new GuessLetter("P", GuessType.WrongLetter);
+            guess[1] = new GuessLetter("T", GuessType.WrongLetter);
+            guess[2] = new GuessLetter("U", GuessType.RightPosition);
+            guess[3] = new GuessLetter("S", GuessType.WrongLetter);
+            guess[4] = new GuessLetter("A", GuessType.WrongPosition);
+
+            guesses.Add(guess);
+
+            guess = new GuessLetter[5];
+            guess[0] = new GuessLetter("L", GuessType.RightPosition);
+            guess[1] = new GuessLetter("W", GuessType.WrongLetter);
+            guess[2] = new GuessLetter("U", GuessType.WrongLetter);
+            guess[3] = new GuessLetter("S", GuessType.WrongLetter);
+            guess[4] = new GuessLetter("Z", GuessType.WrongLetter);
+
+            guesses.Add(guess);
+             GetSuggestions(new GetSuggestionsRequest(guesses));
+#endif
         }
 
         // GET: api/<WordleController>
@@ -97,6 +118,47 @@ namespace WordleHelperApi.Controllers
             return new TestHttpResponse(request, suggestions);
         }
 
+        // POST api/<WordleController>
+        [Route("GetSuggestions")]
+        [HttpPost]
+
+        //public async Task<GetSuggestionsResponse> GetSuggestions(GuessLetter[][] guesses)
+        public async Task<GetSuggestionsResponse> GetSuggestions(GetSuggestionsRequest guesses)
+        {
+            List<string> suggestions = new List<string>();
+            var builder = new MySqlConnectionStringBuilder
+            {
+                Server = $"{_optionsApplicationConfiguration.Value.Server}",
+                Database = "entries",
+                UserID = $"{_optionsApplicationConfiguration.Value.UserID}",
+                Password = $"{_optionsApplicationConfiguration.Value.Password}",
+                SslMode = MySqlSslMode.Required
+            };
+
+            using (var conn = new MySqlConnection(builder.ConnectionString))
+            {
+                await conn.OpenAsync();
+
+                using (var command = conn.CreateCommand())
+                {
+                    command.CommandText = "SELECT * FROM entries.scrabble WHERE word  like 'lau%';";
+                    using (MySqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            suggestions.Add(reader["word"] as string);
+                        }
+                    }
+
+                }
+
+            }
+
+            return new GetSuggestionsResponse(null, suggestions);
+            //return new GetSuggestionsResponse(request, suggestions);
+        }
+
+
         // PUT api/<WordleController>/5
         [HttpPut("{id}")]
         public void Put(int id, [FromBody] string value)
@@ -111,6 +173,142 @@ namespace WordleHelperApi.Controllers
     }
 
     #region Global Types
+
+    public enum GuessType
+    {
+        RightPosition = 1,
+        WrongLetter = 2,
+        WrongPosition = 3
+    }
+
+    [DataContract]
+    public class GuessLetter
+    {
+        [DataMember(EmitDefaultValue = false)]
+        public GuessType type { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string letter { get; set; }
+
+        public GuessLetter(string letter, GuessType type)
+        {
+            this.letter = letter;
+            this.type = type;
+        }
+    }
+
+    [DataContract]
+    public class GetSuggestionsRequest
+    {
+        #region Properties
+
+        /// <summary>
+        /// Test string value
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public GuessLetter[][] Guesses { get; set; }
+
+        #endregion
+
+        #region Constructors
+
+        public GetSuggestionsRequest()
+        {
+
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="stringValue"></param>
+        /// <param name="intValue"></param>
+        public GetSuggestionsRequest(List<GuessLetter[]> guesses)
+        {
+            this.Guesses = guesses.ToArray();
+        }
+        public GetSuggestionsRequest(GuessLetter[][] guesses)
+        {
+            this.Guesses = guesses;
+        }
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return $"GetSuggestionsRequest: {this.Guesses.Length} guesses";
+        }
+
+        #endregion
+
+        #region Types
+
+        #endregion
+    }
+
+    [DataContract]
+    public class GetSuggestionsResponse : ErrorResponse
+    {
+        #region Properties
+
+        /// <summary>
+        /// String array of words that match request criteria
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public string[] Suggestions { get; set; }
+
+        #endregion
+
+        #region Constructors
+
+        public GetSuggestionsResponse()
+        { }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="iUserInterface"></param>
+        /// <param name="request"></param>
+        public GetSuggestionsResponse(GetSuggestionsRequest request, List<string> suggestions)
+        {
+            if (suggestions != null)
+            {
+                this.Suggestions = suggestions.ToArray();
+            }
+        }
+
+        public GetSuggestionsResponse(string[] suggestions, int errorCode, string errorDescription, LTApiError ltApiError)
+            : base(errorCode, errorDescription, ltApiError)
+        {
+            this.Suggestions = suggestions;
+        }
+
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return $"GetSuggestionsResponse: {this.Suggestions?.Length} suggestions";
+        }
+
+
+
+        #endregion
+
+        #region Types
+
+        #endregion
+    }
 
     /// <summary>
     /// Test request
