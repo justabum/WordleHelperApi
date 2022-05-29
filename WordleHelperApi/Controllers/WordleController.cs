@@ -37,10 +37,10 @@ namespace WordleHelperApi.Controllers
             List<string> suggestions = new List<string>(); 
                 var builder = new MySqlConnectionStringBuilder
                 {
-                    Server = "mysql-1-swottle.mysql.database.azure.com",
+                    Server = "{DBServer}",
                     Database = "entries",
-                    UserID = "marcb",
-                    Password = "Locus#246",
+                    UserID = "{UserID}",
+                    Password = "{Password}",
                     SslMode = MySqlSslMode.Required
                 };
 
