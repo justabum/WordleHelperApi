@@ -4,9 +4,11 @@ using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Text;
 using System.Threading.Tasks;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -135,13 +137,14 @@ namespace WordleHelperApi.Controllers
                 SslMode = MySqlSslMode.Required
             };
 
+            string sqlQuery = BuildSqlQuery(guesses); // "SELECT * FROM entries.scrabble WHERE word  like 'lau%';";
             using (var conn = new MySqlConnection(builder.ConnectionString))
             {
                 await conn.OpenAsync();
 
                 using (var command = conn.CreateCommand())
                 {
-                    command.CommandText = "SELECT * FROM entries.scrabble WHERE word  like 'lau%';";
+                    command.CommandText = sqlQuery;
                     using (MySqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -154,8 +157,125 @@ namespace WordleHelperApi.Controllers
 
             }
 
-            return new GetSuggestionsResponse(null, suggestions);
+            return new GetSuggestionsResponse(null, suggestions, guesses.ReturnQuery ? sqlQuery : null);
             //return new GetSuggestionsResponse(request, suggestions);
+        }
+
+        enum LetterStatus
+        {
+            WrongCharacter, // gray
+            WrongPosition, // yelow
+            RightPosition // green
+        }
+        class KnownPosition : IEquatable<KnownPosition>
+        {
+            public int Position;
+            public string Character;
+            public KnownPosition(int position, string character)
+            {
+                this.Position = position;
+                this.Character = character;
+            }
+
+            // IEquatable (so we can do list.Contains() check
+            public bool Equals([AllowNull] KnownPosition other)
+            {
+                return this.Position == other.Position && this.Character.Equals(other.Character);
+            }
+        }
+
+        string[] KnownPositions = new string[5]; // AND substring(word,5,1) = 'E' 
+        List<string> KnownWrong = new List<string>(); // AND word not like '%G%' 
+        List<string> KnownContains = new List<string>(); // AND word like '%D%' 
+        List<KnownPosition> KnownWrongPositions = new List<KnownPosition>(); // AND substring(word,1,1) != 'L' 
+
+
+
+        private string BuildSqlQuery(GetSuggestionsRequest guesses)
+        {
+            foreach( GuessLetter[] guess in guesses.Guesses)
+            {
+                for (int i = 0; i < guess.Length; i++)
+                {
+                    if (guess[i].type == GuessType.RightPosition)
+                    {
+                        KnownPositions[i] = guess[i].letter; 
+
+                        // make sure it is not in the KnownWrong list (e.g. KNEED where 1st E is gray, 2nd E is green)
+                        if (KnownWrong.Contains(guess[i].letter))
+                        {
+                            KnownWrong.Remove(guess[i].letter);
+                        }
+                    }
+                    else if (guess[i].type == GuessType.WrongLetter)
+                    {
+                        // Add to list if not already in the KnownWrong or KnownContains lists
+                        if (!KnownWrong.Contains(guess[i].letter) && !KnownContains.Contains(guess[i].letter))
+                        {
+                            KnownWrong.Add(guess[i].letter);
+                        }
+                    }
+                    else
+                    {
+                        // Add to list if not already in list
+                        if (!KnownContains.Contains(guess[i].letter))
+                        {
+                            KnownContains.Add(guess[i].letter);
+                        }
+                        KnownPosition knownWrongPosition = new KnownPosition(i, guess[i].letter);
+                        if (!KnownWrongPositions.Contains(knownWrongPosition))
+                        {
+                            KnownWrongPositions.Add(new KnownPosition(i, guess[i].letter));
+                        }
+
+                        // make sure it is not in the KnownWrong list (e.g. KNEED where 1st E is gray, 2nd E is yellow)
+                        if (KnownWrong.Contains(guess[i].letter))
+                        {
+                            KnownWrong.Remove(guess[i].letter);
+                        }
+                    }
+                }
+            }
+
+            return BuildSqlQuery();
+        }
+
+        private string BuildSqlQuery()
+        {
+            const string table = "entries.scrabble";
+            StringBuilder sb = new StringBuilder($"SELECT * FROM {table} WHERE CHAR_LENGTH(word) = 5{Environment.NewLine}");
+
+            // has these characters in these positions
+            for (int i = 0; i < KnownPositions.Length; i++)
+            {
+                if (KnownPositions[i] != null)
+                {
+                    sb.AppendLine($"AND substring(word, {i + 1}, 1) = '{KnownPositions[i]}'");
+                }
+            }
+
+            // doesn’t contain these letters
+            for (int i = 0; i < KnownWrong.Count; i++)
+            {
+                sb.AppendLine($"AND word not like '%{KnownWrong[i]}%'");
+            }
+
+            // contains these letters(don’t include known positions)
+            foreach (string s in KnownContains)
+            {
+                sb.AppendLine($"AND word like '%{s}%'");
+            }
+
+            // these chars not in these positions 
+            foreach (KnownPosition k in KnownWrongPositions)
+            {
+                sb.AppendLine($"AND substring(word,{k.Position + 1},1) != '{k.Character}'");
+            }
+
+            sb.AppendLine("GROUP BY word LIMIT 0, 100");
+            string sqlQuery = sb.ToString();
+            
+            return sqlQuery;
         }
 
 
@@ -203,10 +323,13 @@ namespace WordleHelperApi.Controllers
         #region Properties
 
         /// <summary>
-        /// Test string value
+        /// Guesses
         /// </summary>
         [DataMember(EmitDefaultValue = false)]
         public GuessLetter[][] Guesses { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public bool ReturnQuery { get; set; }
 
         #endregion
 
@@ -221,13 +344,15 @@ namespace WordleHelperApi.Controllers
         /// </summary>
         /// <param name="stringValue"></param>
         /// <param name="intValue"></param>
-        public GetSuggestionsRequest(List<GuessLetter[]> guesses)
+        public GetSuggestionsRequest(List<GuessLetter[]> guesses, bool returnQuery)
+            : this(guesses.ToArray(), returnQuery)
         {
-            this.Guesses = guesses.ToArray();
         }
-        public GetSuggestionsRequest(GuessLetter[][] guesses)
+
+        public GetSuggestionsRequest(GuessLetter[][] guesses, bool returnQuery)
         {
             this.Guesses = guesses;
+            this.ReturnQuery = returnQuery;
         }
 
         #endregion
@@ -261,6 +386,9 @@ namespace WordleHelperApi.Controllers
         [DataMember(EmitDefaultValue = false)]
         public string[] Suggestions { get; set; }
 
+        [DataMember(EmitDefaultValue = false)]
+        public string SqlQuery { get; set; }
+
         #endregion
 
         #region Constructors
@@ -273,12 +401,14 @@ namespace WordleHelperApi.Controllers
         /// </summary>
         /// <param name="iUserInterface"></param>
         /// <param name="request"></param>
-        public GetSuggestionsResponse(GetSuggestionsRequest request, List<string> suggestions)
+        public GetSuggestionsResponse(GetSuggestionsRequest request, List<string> suggestions, string sqlQuery)
         {
             if (suggestions != null)
             {
                 this.Suggestions = suggestions.ToArray();
             }
+
+            this.SqlQuery = sqlQuery;
         }
 
         public GetSuggestionsResponse(string[] suggestions, int errorCode, string errorDescription, LTApiError ltApiError)
