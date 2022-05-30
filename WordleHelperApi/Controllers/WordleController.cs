@@ -189,8 +189,6 @@ namespace WordleHelperApi.Controllers
         List<string> KnownContains = new List<string>(); // AND word like '%D%' 
         List<KnownPosition> KnownWrongPositions = new List<KnownPosition>(); // AND substring(word,1,1) != 'L' 
 
-
-
         private string BuildSqlQuery(GetSuggestionsRequest guesses)
         {
             foreach( GuessLetter[] guess in guesses.Guesses)
