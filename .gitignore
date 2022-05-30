@@ -7,3 +7,5 @@ obj/
 
 # ignore vs files
 .vs/
+*.user
+
